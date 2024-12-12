@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.Duration;
 import java.util.Date;
@@ -22,7 +23,9 @@ public class TokenProvider {
     private final JwtProperties jwtProperties;
     private final UserRepository userRepository;
 
-    private static final Key SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private Key getSecretKey() {
+        return Keys.hmacShaKeyFor(jwtProperties.getSecretKey().getBytes(StandardCharsets.UTF_8));
+    }
 
     /**
      * 사용자의 토큰을 생성한다.
@@ -54,7 +57,7 @@ public class TokenProvider {
                 .setExpiration(expiry)                        // 만료 시간 - "exp": "1698333000"
                 .setSubject(userPrincipal.getUsername())      // 식별자 - "sub": "xxzeroeight@naver.com"
                 .claim("id", userPrincipal.getId())        // 사용자 id - "id": "12345"
-                .signWith(SECRET_KEY)                         // 서명 - "signature": "..."
+                .signWith(getSecretKey())                         // 서명 - "signature": "..."
                 .compact();                                   // 문자열 형태로 압축 - <header>.<payload>.<signature>
     }
 
@@ -67,7 +70,7 @@ public class TokenProvider {
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()
-                    .setSigningKey(SECRET_KEY)
+                    .setSigningKey(getSecretKey())
                     .build()
                     .parseClaimsJws(token);
             return true;
@@ -118,7 +121,7 @@ public class TokenProvider {
      */
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(SECRET_KEY)
+                .setSigningKey(getSecretKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
