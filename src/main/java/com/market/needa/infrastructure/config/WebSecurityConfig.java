@@ -1,5 +1,9 @@
 package com.market.needa.infrastructure.config;
 
+import com.market.needa.application.token.TokenService;
+import com.market.needa.infrastructure.jwt.TokenAuthenticationFilter;
+import com.market.needa.infrastructure.jwt.TokenProvider;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,7 +16,9 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+@RequiredArgsConstructor
 @EnableWebSecurity
 @Configuration
 public class WebSecurityConfig {
@@ -36,7 +42,7 @@ public class WebSecurityConfig {
      * @throws Exception HttpSecurity 구성 중 오류가 발생할 경우
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenAuthenticationFilter tokenAuthenticationFilter) throws Exception {
         http
             .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                     .requestMatchers("/", "/login", "/signup",
@@ -44,6 +50,7 @@ public class WebSecurityConfig {
                             "/static/**", "/user/**").permitAll()
                     .anyRequest().authenticated()
             )
+            .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable)
             .csrf(AbstractHttpConfigurer::disable)
@@ -51,6 +58,11 @@ public class WebSecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
+    }
+
+    @Bean
+    public TokenAuthenticationFilter tokenAuthenticationFilter(TokenService tokenService, TokenProvider tokenProvider) {
+        return new TokenAuthenticationFilter(tokenProvider, tokenService);
     }
 
     /**
